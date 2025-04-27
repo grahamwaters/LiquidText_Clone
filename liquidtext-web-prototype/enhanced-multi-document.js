@@ -518,6 +518,52 @@ function createDocumentFrame(index) {
     return frame;
 }
 
+// Improved removeDocument function for multi-document view
+function removeDocument(index) {
+    if (!loadedDocuments[index]) return;
+
+    // Clear document data
+    loadedDocuments[index] = null;
+
+    // Update allMatches array - remove all matches from this document
+    allMatches = allMatches.filter(match => match.docIndex !== index);
+
+    // Reset the document frame
+    const frame = document.querySelector(`.document-frame[data-index="${index}"]`);
+    if (!frame) return;
+
+    frame.querySelector('.pdf-title-bar span').textContent = `Document ${index + 1}`;
+    frame.querySelector('.current-page').textContent = '0';
+    frame.querySelector('.total-pages').textContent = '0';
+
+    const canvas = frame.querySelector('#pdf-canvas-' + index);
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const textLayer = frame.querySelector('#text-layer-' + index);
+    if (textLayer) {
+        textLayer.innerHTML = '';
+    }
+
+    // Show the add document panel
+    const addDocPanel = frame.querySelector('.add-document-panel');
+    if (addDocPanel) {
+        addDocPanel.style.display = 'flex';
+    }
+
+    // Update match counter
+    updateMatchCounter();
+
+    // Update dossier if it exists
+    if (typeof window.compileDossier === 'function') {
+        window.compileDossier();
+    }
+
+    showNotification('Document removed', 'info');
+}
+
 // Open a file dialog to load a PDF
 function openFileDialog(frameIndex) {
     const fileInput = document.createElement('input');

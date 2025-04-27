@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document Analyzer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #graph {
+            width: 800px;
+            height: 600px;
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        .node {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        .controls {
+            margin: 10px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        #results {
+            margin: 10px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+        }
+        .analysis-button rect {
+            cursor: pointer;
+        }
+        .analysis-button text {
+            cursor: pointer;
+            user-select: none;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <input type="file" id="pdf-upload" multiple accept="application/pdf">
+        <button onclick="uploadPDFs()">Upload PDFs</button>
+        <button onclick="analyze()">Analyze</button>
+    </div>
+    <div id="graph"></div>
+    <div id="results"></div>
+
+    <script>
+        let nodes = [];
+        let links = [];
+        let simulation;
+        const width = 800;
+        const height = 600;
+        const backendUrl = "http://localhost:5000";
+        const svg = d3.select("#graph").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("viewBox", [0, 0, width, height]);
+
+        function setupSimulation() {
+            simulation = d3.forceSimulation(nodes)
+                .force("charge", d3.forceManyBody().strength(-150))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(25))
+                .force("link", d3.forceLink(links).distance(100));
+
+            simulation.on("tick", () => {
+                svg.selectAll(".link")
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                svg.selectAll(".node")
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+            });
+        }
+
+        function updateGraph() {
+            svg.selectAll(".link").remove();
+            svg.selectAll(".node").remove();
+
+            const link = svg.selectAll(".link")
+                .data(links)
+                .enter().append("line")
+                .attr("class", "link");
+
+            const node = svg.selectAll(".node")
+                .data(nodes)
+                .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", 12)
+                .attr("fill", d => d.color || "#666")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .append("title")
+                .text(d => d.name);
+
+            if (simulation) {
+                simulation.nodes(nodes);
+                simulation.force("link").links(links);
+                simulation.alpha(1).restart();
+            }
+        }
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        async function checkBackend() {
+            try {
+                const response = await fetch(`${backendUrl}/health`);
+                if (!response.ok) throw new Error("Backend health check failed");
+                return true;
+            } catch (error) {
+                console.error("Backend check error:", error);
+                return false;
+            }
+        }
+
+        async function uploadPDFs() {
+            const files = document.getElementById("pdf-upload").files;
+            if (files.length === 0) {
+                alert("Please select at least one PDF file.");
+                return;
+            }
+
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "<p>Checking backend connection...</p>";
+
+            const backendAvailable = await checkBackend();
+            if (!backendAvailable) {
+                resultsDiv.innerHTML = `<p class="error">Error: Backend server at ${backendUrl} is not responding. Please ensure the Flask server is running.</p>`;
+                return;
+            }
+
+            const formData = new FormData();
+            Array.from(files).forEach(file => formData.append("files", file));
+
+            try {
+                console.log("Uploading files to:", `${backendUrl}/upload`);
+                const response = await fetch(`${backendUrl}/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Upload failed");
+                }
+                const data = await response.json();
+                nodes = data.map(doc => ({ id: doc.id, name: doc.name }));
+                links = [];
+                if (!simulation) setupSimulation();
+                updateGraph();
+                resultsDiv.innerHTML = `<p>Successfully uploaded ${data.length} PDF(s).</p>`;
+            } catch (error) {
+                console.error("Upload error:", error);
+                resultsDiv.innerHTML = `<p class="error">Error uploading PDFs: ${error.message}. Check the console for details.</p>`;
+            }
+        }
+
+        function analyze() {
+            if (nodes.length === 0) {
+                alert("No documents to analyze. Please upload PDFs first.");
+                return;
+            }
+
+            const radius = 300;
+            nodes.forEach((node, i) => {
+                const angle = (i / nodes.length) * 2 * Math.PI;
+                node.fx = (width / 2) + radius * Math.cos(angle);
+                node.fy = (height / 2) + radius * Math.sin(angle);
+            });
+            simulation.alpha(1).restart();
+
+            svg.selectAll(".analysis-button").remove();
+
+            const analyses = [
+                { name: "Exact Phrases", type: "phrases" },
+                { name: "People", type: "people" },
+                { name: "Sentiment", type: "sentiment" },
+                { name: "Chronology", type: "chronology" }
+            ];
+
+            const buttonGroup = svg.append("g")
+                .attr("class", "analysis-buttons")
+                .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+            analyses.forEach((analysis, i) => {
+                buttonGroup.append("rect")
+                    .attr("class", "analysis-button")
+                    .attr("x", -60)
+                    .attr("y", i * 40 - 80)
+                    .attr("width", 120)
+                    .attr("height", 30)
+                    .attr("fill", "#e0e0e0")
+                    .attr("stroke", "#333")
+                    .attr("rx", 5)
+                    .on("click", () => performAnalysis(analysis.type));
+
+                buttonGroup.append("text")
+                    .attr("class", "analysis-button")
+                    .attr("x", 0)
+                    .attr("y", i * 40 - 60)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#000")
+                    .text(analysis.name)
+                    .on("click", () => performAnalysis(analysis.type));
+            });
+
+            document.getElementById("results").innerHTML = "<p>Click an analysis button to view results.</p>";
+        }
+
+        async function performAnalysis(type) {
+            const resultsDiv = document.getElementById("results");
+            try {
+                console.log(`Performing ${type} analysis...`);
+                const response = await fetch(`${backendUrl}/analyze/${type}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Analysis ${type} failed`);
+                }
+                const data = await response.json();
+                resultsDiv.innerHTML = "";
+
+                if (type === "phrases" || type === "people") {
+                    links = data.connections.map(conn => ({
+                        source: conn[0],
+                        target: conn[1]
+                    }));
+                    nodes.forEach(node => { node.fx = null; node.fy = null; });
+                    updateGraph();
+
+                    const results = type === "phrases" ? data.shared_sentences : data.shared_people;
+                    let output = `<h3>${type.charAt(0).toUpperCase() + type.slice(1)}</h3><ul>`;
+                    for (const [item, docs] of Object.entries(results)) {
+                        const docNames = docs.map(id => nodes.find(n => n.id === id).name).join(", ");
+                        output += `<li>"${item}" found in: ${docNames}</li>`;
+                    }
+                    output += "</ul>";
+                    resultsDiv.innerHTML = output;
+                } else if (type === "sentiment") {
+                    nodes.forEach(node => {
+                        const sentiment = data[node.id];
+                        node.color = sentiment > 0 ? "#4CAF50" : sentiment < 0 ? "#F44336" : "#999";
+                    });
+                    updateGraph();
+                    resultsDiv.innerHTML = "<p>Documents colored by sentiment (green: positive, red: negative, gray: neutral).</p>";
+                } else if (type === "chronology") {
+                    resultsDiv.innerHTML = `<h3>Chronology</h3><pre>${data.chronology}</pre>`;
+                }
+            } catch (error) {
+                console.error(`Analysis ${type} error:`, error);
+                resultsDiv.innerHTML = `<p class="error">Error performing ${type} analysis: ${error.message}. Check the console for details.</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
+<!-- Backend Python Code (Save as app.py and run with Flask) -->
+<script type="text/python">
+from flask import Flask, request, jsonify
+from pdfminer.high_level import extract_text
+import spacy
+from textblob import TextBlob
+import datefinder
+import re
+from collections import defaultdict
+from flask_cors import CORS
+import io
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})  # Allow CORS for local development
+nlp = spacy.load("en_core_web_sm", disable=["parser"])  # Optimize spaCy
+documents = {}  # Store document texts by ID
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
+@app.route('/upload', methods=['POST'])
+def upload_pdfs():
+    try:
+        uploaded_files = request.files.getlist("files")
+        if not uploaded_files:
+            return jsonify({"error": "No files uploaded"}), 400
+        doc_ids = []
+        for file in uploaded_files:
+            if not file.filename.lower().endswith('.pdf'):
+                continue
+            file_stream = io.BytesIO(file.read())
+            text = extract_text(file_stream)
+            if text.strip():
+                doc_id = len(documents)
+                documents[doc_id] = {'name': file.filename, 'text': text}
+                doc_ids.append({'id': doc_id, 'name': file.filename})
+            file_stream.close()
+        if not doc_ids:
+            return jsonify({"error": "No valid PDFs processed"}), 400
+        return jsonify(doc_ids)
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route('/analyze/phrases', methods=['GET'])
+def analyze_phrases():
+    try:
+        sentence_to_docs = defaultdict(list)
+        for doc_id, doc in documents.items():
+            sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', doc['text'])
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if len(sentence) > 10:  # Filter short sentences
+                    sentence_to_docs[sentence].append(doc_id)
+        shared_sentences = {sentence: docs for sentence, docs in sentence_to_docs.items() if len(docs) > 1}
+        connections = set()
+        for docs in shared_sentences.values():
+            for i in range(len(docs)):
+                for j in range(i + 1, len(docs)):
+                    connections.add((min(docs[i], docs[j]), max(docs[i], docs[j])))
+        return jsonify({'connections': list(connections), 'shared_sentences': shared_sentences})
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route('/analyze/people', methods=['GET'])
+def analyze_people():
+    try:
+        people_to_docs = defaultdict(list)
+        for doc_id, doc in documents.items():
+            doc_nlp = nlp(doc['text'])
+            for ent in doc_nlp.ents:
+                if ent.label_ == "PERSON" and len(ent.text) > 3:  # Filter short names
+                    people_to_docs[ent.text].append(doc_id)
+        shared_people = {person: docs for person, docs in people_to_docs.items() if len(docs) > 1}
+        connections = set()
+        for docs in shared_people.values():
+            for i in range(len(docs)):
+                for j in range(i + 1, len(docs)):
+                    connections.add((min(docs[i], docs[j]), max(docs[i], docs[j])))
+        return jsonify({'connections': list(connections), 'shared_people': shared_people})
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route('/analyze/sentiment', methods=['GET'])
+def analyze_sentiment():
+    try:
+        sentiments = {}
+        for doc_id, doc in documents.items():
+            blob = TextBlob(doc['text'])
+            sentiments[doc_id] = blob.sentiment.polarity
+        return jsonify(sentiments)
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route('/analyze/chronology', methods=['GET'])
+def analyze_chronology():
+    try:
+        events = []
+        for doc_id, doc in documents.items():
+            sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', doc['text'])
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if sentence:
+                    matches = list(datefinder.find_dates(sentence, strict=True))
+                    if matches:
+                        events.append({
+                            'date': matches[0],
+                            'text': sentence,
+                            'doc': doc['name']
+                        })
+        events.sort(key=lambda x: x['date'])
+        chronology = "\n".join(
+            f"{event['date'].strftime('%Y-%m-%d')}: {event['text']} (Source: {event['doc']})"
+            for event in events
+        ) or "No dated events found."
+        return jsonify({'chronology': chronology})
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+</script>
+<!-- Footer Section -->
+<footer style="text-align: center; margin-top: 20px; font-size: 14px; color: #666;">
+    <p>&copy; 2025 Document Analyzer. All rights reserved.</p>
+</footer>
+</body>
+
+
+<!-- The "Upload PDFs" button should work if the following conditions are met:
+
+1. **Backend Server is Running**: Ensure the Flask backend server (`app.py`) is running on `http://localhost:5000`. You can start it by running `python app.py` in the terminal.
+
+2. **CORS is Enabled**: The backend has CORS enabled, so it should allow requests from the frontend.
+
+3. **PDF Files are Selected**: The button will only work if you select at least one valid PDF file using the file input (`<input type="file" id="pdf-upload" multiple accept="application/pdf">`).
+
+4. **Backend Endpoint Exists**: The `/upload` endpoint in the Flask backend must be implemented correctly. Based on the provided code, it processes uploaded PDF files and extracts text using `pdfminer`.
+
+5. **No Errors in the Console**: Check the browser's developer console for any errors (e.g., network issues, CORS errors, or JavaScript errors).
+
+If all these conditions are satisfied, the button should work as expected. If it doesn't, check the console logs for errors or debug the backend to ensure it processes the uploaded files correctly. -->
