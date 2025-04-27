@@ -1,2 +1,5 @@
 .vscode
 issues.md
+document_analyzer/venv/*
+document_analyzer/venv
+document_analyzer/venv/bin/Activate.ps1
