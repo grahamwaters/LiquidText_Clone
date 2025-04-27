@@ -126,11 +126,31 @@ function loadPDF(url) {
         // Set as current document
         currentPDF = docId;
 
-        // Make document item clickable
+        // // Make document item clickable
+        // docItem.addEventListener('click', function() {
+        //     currentPDF = this.dataset.docId;
+        //     const doc = projectData.documents.find(d => d.id === currentPDF);
+        //     loadPDF(doc.url);
+        // });
+        //! Fix: Changed to this:
         docItem.addEventListener('click', function() {
             currentPDF = this.dataset.docId;
             const doc = projectData.documents.find(d => d.id === currentPDF);
-            loadPDF(doc.url);
+
+            // Don't reload the PDF, just switch to it
+            // Update UI to show this is the current document
+            document.querySelectorAll('.document-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            this.classList.add('active');
+
+            // If we already have this PDF loaded, just update page
+            if (pdfDoc && currentPage) {
+                renderPage(currentPage);
+            } else {
+                // Only load if not already loaded
+                loadPDF(doc.url);
+            }
         });
     }).catch(function(error) {
         console.error('Error loading PDF:', error);
@@ -257,7 +277,71 @@ function navigateToSource(sourceInfo) {
     }
 }
 
-// Function to handle text selection in the PDF
+//? Function to handle text selection in the PDF
+// function handleTextSelection() {
+//     const selection = window.getSelection();
+//     if (selection.toString().trim()) {
+//         selectedText = selection.toString();
+
+//         // Show an excerpt button near the selection
+//         const range = selection.getRangeAt(0);
+//         const rect = range.getBoundingClientRect();
+
+//         // Create or update excerpt button
+//         let excerptBtn = document.getElementById('excerpt-button');
+//         if (!excerptBtn) {
+//             excerptBtn = document.createElement('button');
+//             excerptBtn.id = 'excerpt-button';
+//             excerptBtn.textContent = 'Create Excerpt';
+//             excerptBtn.className = 'excerpt-button';
+//             document.body.appendChild(excerptBtn);
+//         }
+
+//         // Position the button
+//         excerptBtn.style.left = (rect.left + window.scrollX) + 'px';
+//         excerptBtn.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+//         excerptBtn.style.display = 'block';
+
+//         // Handle excerpt creation
+//         excerptBtn.onclick = function() {
+//             const sourceInfo = {
+//                 documentId: currentPDF,
+//                 page: currentPage,
+//                 text: selectedText,
+//                 coordinates: {
+//                     x: rect.left - document.getElementById('pdf-canvas').getBoundingClientRect().left,
+//                     y: rect.top - document.getElementById('pdf-canvas').getBoundingClientRect().top,
+//                     width: rect.width,
+//                     height: rect.height
+//                 }
+//             };
+
+//             createExcerpt(selectedText, sourceInfo);
+
+//             // Hide button after use
+//             excerptBtn.style.display = 'none';
+
+//             // Clear selection
+//             if (window.getSelection) {
+//                 if (window.getSelection().empty) {  // Chrome
+//                     window.getSelection().empty();
+//                 } else if (window.getSelection().removeAllRanges) {  // Firefox
+//                     window.getSelection().removeAllRanges();
+//                 }
+//             } else if (document.selection) {  // IE
+//                 document.selection.empty();
+//             }
+//         };
+//     } else {
+//         const excerptBtn = document.getElementById('excerpt-button');
+//         if (excerptBtn) {
+//             excerptBtn.style.display = 'none';
+//         }
+//     }
+// }
+
+//! fix -- new function
+// Modify the handleTextSelection function to work better
 function handleTextSelection() {
     const selection = window.getSelection();
     if (selection.toString().trim()) {
@@ -266,6 +350,9 @@ function handleTextSelection() {
         // Show an excerpt button near the selection
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
+
+        const pdfContainer = document.querySelector('.pdf-container');
+        const containerRect = pdfContainer.getBoundingClientRect();
 
         // Create or update excerpt button
         let excerptBtn = document.getElementById('excerpt-button');
@@ -277,9 +364,9 @@ function handleTextSelection() {
             document.body.appendChild(excerptBtn);
         }
 
-        // Position the button
-        excerptBtn.style.left = (rect.left + window.scrollX) + 'px';
-        excerptBtn.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+        // Position the button relative to the PDF container
+        excerptBtn.style.left = (rect.left - containerRect.left + pdfContainer.scrollLeft + rect.width/2) + 'px';
+        excerptBtn.style.top = (rect.bottom - containerRect.top + pdfContainer.scrollTop + 5) + 'px';
         excerptBtn.style.display = 'block';
 
         // Handle excerpt creation
@@ -308,8 +395,6 @@ function handleTextSelection() {
                 } else if (window.getSelection().removeAllRanges) {  // Firefox
                     window.getSelection().removeAllRanges();
                 }
-            } else if (document.selection) {  // IE
-                document.selection.empty();
             }
         };
     } else {
@@ -319,6 +404,7 @@ function handleTextSelection() {
         }
     }
 }
+
 
 // Create a new workspace
 function createWorkspace(name) {
@@ -553,6 +639,13 @@ document.addEventListener('DOMContentLoaded', function() {
     textLayer.id = 'text-layer';
     textLayer.className = 'text-layer';
     document.querySelector('.pdf-container').appendChild(textLayer);
+    //possible
+    textLayer.style.position = 'absolute';
+
+
+    document.getElementById('advancedMultiDocView').addEventListener('click', function() {
+        window.location.href = 'enhanced-multi-document-view.html';
+    });
 
     // Listen for text selection in the PDF
     document.getElementById('text-layer').addEventListener('mouseup', handleTextSelection);
@@ -618,25 +711,42 @@ document.addEventListener('DOMContentLoaded', function() {
         renderPage(currentPage);
     });
 
-    // Add document button
+    //? Add document button
+    // document.querySelector('.add-document').addEventListener('click', function() {
+    //     // In a real app, we'd use File API to let users select a PDF
+    //     // For demo, simulate a file dialog then load a sample PDF
+    //     const fileInput = document.createElement('input');
+    //     fileInput.type = 'file';
+    //     fileInput.accept = 'application/pdf';
+
+    //     fileInput.addEventListener('change', function() {
+    //         if (this.files && this.files[0]) {
+    //             // In a real implementation, we'd handle the user's actual file
+    //             // For demo purposes, we'll still load the sample PDF
+    //             loadPDF('https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf');
+    //         }
+    //     });
+
+    //     fileInput.click();
+    // });
+    //! fix added the below
     document.querySelector('.add-document').addEventListener('click', function() {
-        // In a real app, we'd use File API to let users select a PDF
-        // For demo, simulate a file dialog then load a sample PDF
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.accept = 'application/pdf';
 
         fileInput.addEventListener('change', function() {
             if (this.files && this.files[0]) {
-                // In a real implementation, we'd handle the user's actual file
-                // For demo purposes, we'll still load the sample PDF
-                loadPDF('https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf');
+                const file = this.files[0];
+                const fileURL = URL.createObjectURL(file);
+
+                // Now load the actual selected file
+                loadPDF(fileURL);
             }
         });
 
         fileInput.click();
     });
-
     // Tool selection
     document.getElementById('highlightTool').addEventListener('click', function() {
         setActiveTool('highlight');
@@ -858,3 +968,84 @@ function handleResize() {
         textLayer.style.width = canvas.width + 'px';
     }
 }
+
+// Add this function to implement highlighting
+function highlightSelectedText() {
+    if (!selectedText) return;
+
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    const spans = range.getNodes([Node.ELEMENT_NODE])
+        .filter(node => node.nodeName === 'SPAN');
+
+    if (spans.length === 0) return;
+
+    // Add highlight class to all spans in the selection
+    spans.forEach(span => {
+        span.classList.add('highlighted');
+    });
+
+    // Save the highlight to the project data
+    const highlightId = 'highlight-' + Date.now();
+    const highlight = {
+        id: highlightId,
+        documentId: currentPDF,
+        page: currentPage,
+        text: selectedText,
+        spans: spans.map(span => span.dataset.index || '0')
+    };
+
+    // Add highlight to the current document's data
+    const doc = projectData.documents.find(d => d.id === currentPDF);
+    if (doc) {
+        if (!doc.highlights) doc.highlights = [];
+        doc.highlights.push(highlight);
+    }
+
+    // Clear the selection
+    if (window.getSelection) {
+        if (window.getSelection().empty) {
+            window.getSelection().empty();
+        } else if (window.getSelection().removeAllRanges) {
+            window.getSelection().removeAllRanges();
+        }
+    }
+
+    // Hide excerpt button
+    const excerptBtn = document.getElementById('excerpt-button');
+    if (excerptBtn) {
+        excerptBtn.style.display = 'none';
+    }
+
+    selectedText = "";
+
+    showNotification('Text highlighted');
+}
+
+// Update the highlight tool handler
+document.getElementById('highlightTool').addEventListener('click', function() {
+    setActiveTool('highlight');
+
+    // When the highlight tool is active, clicking on selected text will highlight it
+    const textLayer = document.getElementById('text-layer');
+    textLayer.style.cursor = 'text';
+
+    // Add event handler for highlighting
+    textLayer.addEventListener('click', function highlightHandler(e) {
+        if (currentTool === 'highlight' && selectedText) {
+            highlightSelectedText();
+        }
+    });
+});
+
+// Add CSS for highlights
+const style = document.createElement('style');
+style.textContent = `
+.highlighted {
+    background-color: rgba(255, 255, 0, 0.5) !important;
+    color: black !important;
+}
+`;
+document.head.appendChild(style);

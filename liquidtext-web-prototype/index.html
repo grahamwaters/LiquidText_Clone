@@ -3,25 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PowerEye Web Clone</title>
+    <title>LiquidText Web Clone</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
         <header class="toolbar">
-            <div class="logo">PowerEye Web Clone</div>
+            <div class="logo">LiquidText Web Clone</div>
             <div class="tools">
-                <button id="highlightTool">Highlight</button>
-                <button id="commentTool">Comment</button>
-                <button id="penTool">Pen</button>
-                <button id="eraserTool">Eraser</button>
-                <button id="searchTool">Search</button>
+                <button id="highlightTool" title="Highlight Text">🖌️</button>
+                <button id="commentTool" title="Add Comment">💬</button>
+                <button id="penTool" title="Pen Tool">✒️</button>
+                <button id="eraserTool" title="Eraser Tool">🧹</button>
+                <button id="searchTool" title="Search">🔍</button>
             </div>
             <div class="project-controls">
-                <button id="newProject">New</button>
-                <button id="openProject">Open</button>
-                <button id="saveProject">Save</button>
-                <button id="exportProject">Export</button>
+                <button id="newProject" title="New Project">New</button>
+                <button id="openProject" title="Open Project">Open</button>
+                <button id="saveProject" title="Save Project">Save</button>
+                <button id="exportProject" title="Export Project">Export</button>
+                <!-- Add this button to the project-controls div in index.html -->
+                <button id="advancedMultiDocView" title="Advanced Multi-Document View">Advanced Multi-Doc</button>
+
             </div>
         </header>
 
@@ -38,18 +41,21 @@
                 <div class="pdf-container">
                     <!-- PDF will be rendered here -->
                     <canvas id="pdf-canvas"></canvas>
+                    <!-- Text layer will be added dynamically -->
                 </div>
                 <div class="document-controls">
-                    <button id="prevPage">Previous</button>
+                    <button id="prevPage" title="Previous Page">◀</button>
                     <span id="pageNum">1</span> / <span id="pageCount">1</span>
-                    <button id="nextPage">Next</button>
-                    <input type="number" id="goToPage" min="1" value="1">
-                    <button id="zoomIn">+</button>
-                    <button id="zoomOut">-</button>
+                    <button id="nextPage" title="Next Page">▶</button>
+                    <input type="number" id="goToPage" min="1" value="1" title="Go to Page">
+                    <button id="zoomIn" title="Zoom In">+</button>
+                    <button id="zoomOut" title="Zoom Out">-</button>
                 </div>
             </section>
 
             <section class="workspace-view">
+                <!-- Workspace selector will be added dynamically -->
+                <!-- New workspace button will be added dynamically -->
                 <div class="workspace-canvas">
                     <!-- Excerpts and notes will be placed here -->
                 </div>
