@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerEye Web Clone</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="toolbar">
+            <div class="logo">PowerEye Web Clone</div>
+            <div class="tools">
+                <button id="highlightTool">Highlight</button>
+                <button id="commentTool">Comment</button>
+                <button id="penTool">Pen</button>
+                <button id="eraserTool">Eraser</button>
+                <button id="searchTool">Search</button>
+            </div>
+            <div class="project-controls">
+                <button id="newProject">New</button>
+                <button id="openProject">Open</button>
+                <button id="saveProject">Save</button>
+                <button id="exportProject">Export</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="document-sidebar">
+                <div class="sidebar-header">Documents</div>
+                <div class="document-list">
+                    <!-- Document list items will be inserted here -->
+                </div>
+                <button class="add-document">Add Document</button>
+            </aside>
+
+            <section class="document-view">
+                <div class="pdf-container">
+                    <!-- PDF will be rendered here -->
+                    <canvas id="pdf-canvas"></canvas>
+                </div>
+                <div class="document-controls">
+                    <button id="prevPage">Previous</button>
+                    <span id="pageNum">1</span> / <span id="pageCount">1</span>
+                    <button id="nextPage">Next</button>
+                    <input type="number" id="goToPage" min="1" value="1">
+                    <button id="zoomIn">+</button>
+                    <button id="zoomOut">-</button>
+                </div>
+            </section>
+
+            <section class="workspace-view">
+                <div class="workspace-canvas">
+                    <!-- Excerpts and notes will be placed here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Load PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <!-- Load Fabric.js for canvas manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <!-- Custom scripts -->
+    <script src="app.js"></script>
+</body>
+</html>

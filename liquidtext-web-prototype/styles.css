@@ -1,0 +1,144 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: #f4f4f4;
+    border-bottom: 1px solid #ddd;
+    height: 50px;
+}
+
+.logo {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.tools, .project-controls {
+    display: flex;
+    gap: 8px;
+}
+
+button {
+    padding: 6px 12px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #f0f0f0;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.document-sidebar {
+    width: 200px;
+    background-color: #f7f7f7;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 10px;
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+}
+
+.document-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.add-document {
+    margin: 10px;
+}
+
+.document-view {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #ddd;
+}
+
+.pdf-container {
+    flex: 1;
+    overflow: auto;
+    background-color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+#pdf-canvas {
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.document-controls {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #f4f4f4;
+    border-top: 1px solid #ddd;
+}
+
+.workspace-view {
+    flex: 2;
+    background-color: #f0f0f0;
+    overflow: auto;
+}
+
+.workspace-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* For the canvas elements that will be created by Fabric.js */
+canvas.workspace-fabric {
+    width: 100%;
+    height: 100%;
+}
+
+input[type="number"] {
+    width: 50px;
+    padding: 5px;
+}
+
+.document-item {
+    padding: 8px;
+    margin-bottom: 4px;
+    background-color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.document-item:hover {
+    background-color: #e9e9e9;
+}
