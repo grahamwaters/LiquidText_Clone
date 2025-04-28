@@ -65,13 +65,33 @@
         let nodes = [];
         let links = [];
         let simulation;
+        let backendUrl = "http://localhost:5000"; // Default, will be updated
         const width = 800;
         const height = 600;
-        const backendUrl = "http://localhost:5000";
         const svg = d3.select("#graph").append("svg")
             .attr("width", width)
             .attr("height", height)
             .attr("viewBox", [0, 0, width, height]);
+
+        // Fetch backend configuration
+        async function initBackendUrl() {
+            try {
+                const response = await fetch("http://localhost:5000/config");
+                if (!response.ok) throw new Error("Failed to fetch backend config");
+                const config = await response.json();
+                backendUrl = `http://localhost:${config.backend_port}`;
+                console.log(`Backend URL set to: ${backendUrl}`);
+            } catch (error) {
+                console.error("Error fetching backend config:", error);
+                document.getElementById("results").innerHTML = `
+                    <p class="error">Error: Could not connect to backend configuration.</p>
+                    <p>Please ensure the Flask server is running and try again.</p>
+                `;
+            }
+        }
+
+        // Initialize backend URL on page load
+        initBackendUrl();
 
         function setupSimulation() {
             simulation = d3.forceSimulation(nodes)
@@ -142,7 +162,7 @@
         async function checkBackend(retries = 3, delay = 1000) {
             for (let i = 0; i < retries; i++) {
                 try {
-                    console.log(`Checking backend (attempt ${i + 1}/${retries})...`);
+                    console.log(`Checking backend (attempt ${i + 1}/${retries}) at ${backendUrl}...`);
                     const response = await fetch(`${backendUrl}/health`, { method: "GET" });
                     if (response.ok) {
                         console.log("Backend is healthy:", await response.json());
@@ -178,8 +198,8 @@
                     <p class="error">Error: Backend server at ${backendUrl} is not responding.</p>
                     <p>Please ensure:</p>
                     <ul>
-                        <li>The Flask server is running on port 5000 (<code>python app.py</code>).</li>
-                        <li>Port 5000 is not blocked by another process.</li>
+                        <li>The Flask server is running (<code>python app.py</code>).</li>
+                        <li>The backend port is accessible.</li>
                         <li>Visit <a href="${backendUrl}/health" target="_blank">${backendUrl}/health</a> to check server status.</li>
                     </ul>
                 `;

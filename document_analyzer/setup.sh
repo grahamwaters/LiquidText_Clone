@@ -50,26 +50,48 @@ if [ ! -f "app.py" ] || [ ! -f "index.html" ]; then
     exit 1
 fi
 
-# Check if port 4000 is available
-if lsof -i:4000 &> /dev/null; then
-    echo -e "${RED}Error: Port 4000 is in use. Please free it or change the port in app.py and index.html.${NC}"
-    exit 1
+# Free port 5000 (Flask backend)
+echo -e "${BLUE}Checking and freeing port 5000...${NC}"
+if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Unix-like systems (macOS, Linux)
+    if lsof -i:5000 &> /dev/null; then
+        echo -e "${BLUE}Terminating process on port 5000...${NC}"
+        lsof -i:5000 | grep LISTEN | awk '{print $2}' | xargs -I {} kill -9 {}
+        sleep 1
+    fi
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    # Windows (Git Bash, WSL, etc.)
+    if netstat -aon | grep -q ":5000.*LISTEN"; then
+        echo -e "${BLUE}Terminating process on port 5000...${NC}"
+        netstat -aon | grep ":5000.*LISTEN" | awk '{print $5}' | cut -d' ' -f1 | xargs -I {} taskkill /PID {} /F
+        sleep 1
+    fi
+else
+    echo -e "${RED}Warning: Unsupported OS ($OSTYPE). Please manually ensure port 5000 is free.${NC}"
 fi
 
-# Check if port 8000 is available
+# Verify port 5000 is free
+if lsof -i:5000 &> /dev/null; then
+    echo -e "${RED}Error: Port 5000 is still in use after attempting to free it. Please manually terminate the process.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Port 5000 is free.${NC}"
+
+# Check if port 8000 is available (frontend)
 if lsof -i:8000 &> /dev/null; then
     echo -e "${RED}Error: Port 8000 is in use. Please free it or use a different port for the frontend server.${NC}"
     exit 1
 fi
+echo -e "${GREEN}Port 8000 is free.${NC}"
 
 # Start Flask backend in the background
-echo -e "${BLUE}Starting Flask backend on http://localhost:4000...${NC}"
+echo -e "${BLUE}Starting Flask backend on http://localhost:5000...${NC}"
 python app.py > backend.log 2>&1 &
 FLASK_PID=$!
 sleep 2  # Wait for server to start
 
 # Check if Flask server is running
-if curl -s http://localhost:4000/health | grep -q "healthy"; then
+if curl -s http://localhost:5000/health | grep -q "healthy"; then
     echo -e "${GREEN}Flask backend started successfully.${NC}"
 else
     echo -e "${RED}Error: Flask backend failed to start. Check backend.log for details.${NC}"
